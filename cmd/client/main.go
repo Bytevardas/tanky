@@ -28,6 +28,10 @@ func main() {
 	}
 
 	for {
+		b, err := protocol.ReadMessage(conn)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(string(b))
 	}
 }
-

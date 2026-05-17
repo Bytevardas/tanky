@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -38,7 +39,6 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	fmt.Println("inside the go routine")
-	defer conn.Close()
 
 	b, err := protocol.ReadMessage(conn)
 	if err != nil {
@@ -55,9 +55,34 @@ func handleConnection(conn net.Conn) {
 		mu.Lock()
 		roomsMap[room] = make(chan net.Conn)
 		mu.Unlock()
+		protocol.WriteMessage(conn, []byte(room))
 
-		fmt.Println(room)
-		fmt.Println(roomsMap[room])
+		joinerConn := <-roomsMap[room]
+		defer conn.Close()
+		defer joinerConn.Close()
+
+		done := make(chan struct{})
+
+		go func() {
+			io.Copy(conn, joinerConn)
+			close(done)
+		}()
+		io.Copy(joinerConn, conn)
+
+		<-done
+	}
+
+	if string(b) == "join" && len(b) == 10 {
+		code := string(b[4:])
+		mu.Lock()
+		ch, ok := roomsMap[code]
+		mu.Unlock()
+		if !ok {
+			protocol.WriteMessage(conn, []byte("Room does not exist"))
+			conn.Close()
+			return
+		}
+		ch <- conn
 	}
 }
 
@@ -77,4 +102,3 @@ func generateRoomId() (string, error) {
 
 	return string(b), nil
 }
-
