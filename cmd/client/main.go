@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"strings"
+
+	"tanky/internal/protocol"
 )
 
 var availableCommands = []string{"host", "join", "help"}
@@ -17,10 +19,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
 	command := os.Args[1]
-	if strings.ToLower(command) != "host" {
+	if strings.ToLower(command) == "host" {
 		host := []byte("host")
-		conn.Write(host)
+		protocol.WriteMessage(conn, host)
+	}
+
+	for {
 	}
 }
+

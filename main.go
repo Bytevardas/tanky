@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/gdamore/tcell/v3"
+	"github.com/gdamore/tcell/v3/color"
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	}
 	defer screen.Fini()
 
-	style := tcell.StyleDefault.Foreground(tcell.ColorGreen).Bold(true)
+	style := tcell.StyleDefault.Foreground(color.Green).Bold(true)
 	screen.SetContent(5, 3, 'H', nil, style)
 	screen.Show()
 

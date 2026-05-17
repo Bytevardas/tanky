@@ -3,11 +3,12 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"io"
 	"log"
 	"math/big"
 	"net"
 	"sync"
+
+	"tanky/internal/protocol"
 )
 
 var (
@@ -37,13 +38,27 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	fmt.Println("inside the go routine")
-	b, err := io.ReadAll(conn)
+	defer conn.Close()
+
+	b, err := protocol.ReadMessage(conn)
 	if err != nil {
 		fmt.Println("failed to read all bytes")
-		conn.Close()
+		return
 	}
 
-	fmt.Println(string(b))
+	if string(b) == "host" {
+		room, err := generateRoomId()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		mu.Lock()
+		roomsMap[room] = make(chan net.Conn)
+		mu.Unlock()
+
+		fmt.Println(room)
+		fmt.Println(roomsMap[room])
+	}
 }
 
 const chars = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
@@ -62,3 +77,4 @@ func generateRoomId() (string, error) {
 
 	return string(b), nil
 }
+
