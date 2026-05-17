@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 
 	"tanky/internal/protocol"
 )
@@ -21,16 +20,26 @@ func main() {
 	}
 	defer conn.Close()
 
-	command := os.Args[1]
-	if strings.ToLower(command) == "host" {
+	if len(os.Args) < 2 {
+		log.Fatal("expecting command to be passed in: host or join <code>")
+	}
+
+	switch os.Args[1] {
+	case "host":
 		host := []byte("host")
 		protocol.WriteMessage(conn, host)
+	case "join":
+		if len(os.Args) < 3 {
+			log.Fatal("join command requires room id")
+		}
+		join := []byte("join " + os.Args[2])
+		protocol.WriteMessage(conn, join)
 	}
 
 	for {
 		b, err := protocol.ReadMessage(conn)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 		}
 		fmt.Println(string(b))
 	}

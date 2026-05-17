@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"strings"
 	"sync"
 
 	"tanky/internal/protocol"
@@ -46,7 +47,11 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	if string(b) == "host" {
+	arguments := strings.Split(string(b), " ")
+	fmt.Println(arguments[0])
+
+	switch arguments[0] {
+	case "host":
 		room, err := generateRoomId()
 		if err != nil {
 			fmt.Println(err)
@@ -61,6 +66,10 @@ func handleConnection(conn net.Conn) {
 		defer conn.Close()
 		defer joinerConn.Close()
 
+		mu.Lock()
+		delete(roomsMap, room)
+		mu.Unlock()
+
 		done := make(chan struct{})
 
 		go func() {
@@ -70,19 +79,26 @@ func handleConnection(conn net.Conn) {
 		io.Copy(joinerConn, conn)
 
 		<-done
-	}
 
-	if string(b) == "join" && len(b) == 10 {
-		code := string(b[4:])
+	case "join":
+		if len(arguments) < 2 {
+			protocol.WriteMessage(conn, []byte("missing code"))
+			return
+		}
 		mu.Lock()
-		ch, ok := roomsMap[code]
+		ch, ok := roomsMap[arguments[1]]
 		mu.Unlock()
 		if !ok {
 			protocol.WriteMessage(conn, []byte("Room does not exist"))
 			conn.Close()
 			return
 		}
+
 		ch <- conn
+
+	default:
+		protocol.WriteMessage(conn, []byte("unknown command"))
+		return
 	}
 }
 
