@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"strings"
 )
+
+var availableCommands = []string{"host", "join", "help"}
 
 func main() {
 	fmt.Println("staring client")
@@ -13,11 +17,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	buf := make([]byte, 4)
 
-	buf[0] = 9
-
-	for {
-		conn.Write(buf)
+	command := os.Args[1]
+	if strings.ToLower(command) != "host" {
+		host := []byte("host")
+		conn.Write(host)
 	}
 }
