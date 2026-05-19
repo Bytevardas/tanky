@@ -6,6 +6,18 @@ import (
 	"net"
 )
 
+const (
+	CommandHost byte = 0x01
+	CommandJoin byte = 0x02
+)
+
+func EncodeCommand(t byte, payload []byte) []byte {
+	b := make([]byte, 1+len(payload))
+	b[0] = t
+	copy(b[1:], payload)
+	return b
+}
+
 func ReadMessage(conn net.Conn) ([]byte, error) {
 	header := make([]byte, 4)
 	_, err := io.ReadFull(conn, header)

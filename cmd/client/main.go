@@ -26,14 +26,12 @@ func main() {
 
 	switch os.Args[1] {
 	case "host":
-		host := []byte("host")
-		protocol.WriteMessage(conn, host)
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
 	case "join":
 		if len(os.Args) < 3 {
 			log.Fatal("join command requires room id")
 		}
-		join := []byte("join " + os.Args[2])
-		protocol.WriteMessage(conn, join)
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(os.Args[2])))
 	}
 
 	for {
