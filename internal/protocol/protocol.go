@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"encoding/binary"
-	"errors"
 	"io"
 	"net"
 )
@@ -12,25 +11,11 @@ const (
 	CommandJoin byte = 0x02
 )
 
-type Command struct {
-	Type    byte
-	Payload []byte
-}
-
-func EncodeCommand(cmd Command) []byte {
-	b := make([]byte, 1+len(cmd.Payload))
-	b[0] = cmd.Type
-	copy(b[1:], cmd.Payload)
-
+func EncodeCommand(t byte, payload []byte) []byte {
+	b := make([]byte, 1+len(payload))
+	b[0] = t
+	copy(b[1:], payload)
 	return b
-}
-
-func DecodeCommand(b []byte) (Command, error) {
-	if len(b) == 0 {
-		return Command{}, errors.New("empty command message")
-	}
-
-	return Command{Type: b[0], Payload: b[1:]}, nil
 }
 
 func ReadMessage(conn net.Conn) ([]byte, error) {
