@@ -6,10 +6,10 @@ import (
 	"net"
 	"os"
 
+	"tanky/internal/game"
 	"tanky/internal/protocol"
 
 	"github.com/gdamore/tcell/v3"
-	"github.com/gdamore/tcell/v3/color"
 )
 
 var availableCommands = []string{"host", "join", "help"}
@@ -48,9 +48,7 @@ func main() {
 	}
 	defer screen.Fini()
 
-	style := tcell.StyleDefault.Foreground(color.Green).Bold(true)
-	screen.SetContent(5, 3, 'H', nil, style)
-	screen.Show()
+	game.RenderMap(screen, game.Map1)
 
 	for {
 		ev := <-screen.EventQ()
@@ -62,11 +60,5 @@ func main() {
 		case *tcell.EventResize:
 			screen.Sync()
 		}
-
-		b, err := protocol.ReadMessage(conn)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(string(b))
 	}
 }
