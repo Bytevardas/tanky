@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/big"
 	"net"
-	"strings"
 	"sync"
 
 	"tanky/internal/protocol"
@@ -46,12 +45,13 @@ func handleConnection(conn net.Conn) {
 		fmt.Println("failed to read all bytes")
 		return
 	}
+	if len(b) == 0 {
+		fmt.Println("received empty message")
+		return
+	}
 
-	arguments := strings.Split(string(b), " ")
-	fmt.Println(arguments[0])
-
-	switch arguments[0] {
-	case "host":
+	switch b[0] {
+	case protocol.CommandHost:
 		room, err := generateRoomId()
 		if err != nil {
 			fmt.Println(err)
@@ -80,13 +80,13 @@ func handleConnection(conn net.Conn) {
 
 		<-done
 
-	case "join":
-		if len(arguments) < 2 {
+	case protocol.CommandJoin:
+		if len(b) < 2 {
 			protocol.WriteMessage(conn, []byte("missing code"))
 			return
 		}
 		mu.Lock()
-		ch, ok := roomsMap[arguments[1]]
+		ch, ok := roomsMap[string(b[1:])]
 		mu.Unlock()
 		if !ok {
 			protocol.WriteMessage(conn, []byte("Room does not exist"))
