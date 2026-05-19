@@ -6,7 +6,10 @@ import (
 	"net"
 	"os"
 
+	"tanky/internal/game"
 	"tanky/internal/protocol"
+
+	"github.com/gdamore/tcell/v3"
 )
 
 var availableCommands = []string{"host", "join", "help"}
@@ -34,11 +37,28 @@ func main() {
 		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(os.Args[2])))
 	}
 
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		log.Fatal("failed to create new screen")
+	}
+
+	err = screen.Init()
+	if err != nil {
+		log.Fatal("failed to create new screen")
+	}
+	defer screen.Fini()
+
+	game.RenderMap(screen, game.Map1)
+
 	for {
-		b, err := protocol.ReadMessage(conn)
-		if err != nil {
-			log.Fatal(err)
+		ev := <-screen.EventQ()
+		switch ev := ev.(type) {
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyEscape {
+				return
+			}
+		case *tcell.EventResize:
+			screen.Sync()
 		}
-		fmt.Println(string(b))
 	}
 }

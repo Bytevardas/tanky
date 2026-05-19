@@ -1,10 +1,23 @@
-package main
+package game
+
+import "github.com/gdamore/tcell/v3"
 
 const MapSize = 26
 
 type Map struct {
 	Name string
 	Grid [MapSize][MapSize]TileType
+}
+
+func RenderMap(screen tcell.Screen, m Map) {
+	for row := range m.Grid {
+		for col := range m.Grid[row] {
+			char, style := tileGlyph(m.Grid[row][col])
+			screen.SetContent(col*2, row, char, nil, style)
+			screen.SetContent(col*2+1, row, char, nil, style)
+		}
+	}
+	screen.Show()
 }
 
 var Map1 = Map{
