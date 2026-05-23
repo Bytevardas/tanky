@@ -9,12 +9,18 @@ type Map struct {
 	Grid [MapSize][MapSize]TileType
 }
 
+func MapOffset(screen tcell.Screen) (int, int) {
+	w, h := screen.Size()
+	return (w - MapSize*2) / 2, (h - MapSize) / 2
+}
+
 func RenderMap(screen tcell.Screen, m Map) {
+	ox, oy := MapOffset(screen)
 	for row := range m.Grid {
 		for col := range m.Grid[row] {
 			char, style := tileGlyph(m.Grid[row][col])
-			screen.SetContent(col*2, row, char, nil, style)
-			screen.SetContent(col*2+1, row, char, nil, style)
+			screen.SetContent(ox+col*2, oy+row, char, nil, style)
+			screen.SetContent(ox+col*2+1, oy+row, char, nil, style)
 		}
 	}
 }

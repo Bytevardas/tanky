@@ -53,6 +53,7 @@ func RenderTank(screen tcell.Screen, t Tank) {
 	if t.Kind == Enemy {
 		style = tcell.StyleDefault.Foreground(color.Red)
 	}
-	screen.SetContent(t.Col*2, t.Row, g, nil, style)
-	screen.SetContent(t.Col*2+1, t.Row, g, nil, style)
+	ox, oy := MapOffset(screen)
+	screen.SetContent(ox+t.Col*2, oy+t.Row, g, nil, style)
+	screen.SetContent(ox+t.Col*2+1, oy+t.Row, g, nil, style)
 }
