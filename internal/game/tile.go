@@ -17,6 +17,20 @@ const (
 	Base
 )
 
+var passable = [7]bool{
+	true,  // Empty
+	false, // Brick
+	false, // Steel
+	true,  // Trees
+	false, // Water
+	true,  // Ice
+	false, // Base
+}
+
+func tilePassable(t TileType) bool {
+	return passable[t]
+}
+
 func tileGlyph(t TileType) (rune, tcell.Style) {
 	switch t {
 	case Brick:
