@@ -17,7 +17,6 @@ func RenderMap(screen tcell.Screen, m Map) {
 			screen.SetContent(col*2+1, row, char, nil, style)
 		}
 	}
-	screen.Show()
 }
 
 var Map1 = Map{

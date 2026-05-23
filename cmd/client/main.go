@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"tanky/internal/game"
 	"tanky/internal/protocol"
@@ -48,17 +49,61 @@ func main() {
 	}
 	defer screen.Fini()
 
-	game.RenderMap(screen, game.Map1)
+	state := game.GameState{
+		Map:  game.Map1,
+		Tank: game.Tank{Col: 13, Row: 22, Direction: game.Up, Kind: game.Player},
+	}
+	game.Render(screen, state)
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
-		ev := <-screen.EventQ()
-		switch ev := ev.(type) {
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape {
-				return
+		select {
+		case <-ticker.C:
+			game.Render(screen, state)
+		case ev := <-screen.EventQ():
+			switch ev := ev.(type) {
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape {
+					return
+				}
+				handleInput(ev, &state)
+				game.Render(screen, state)
+			case *tcell.EventResize:
+				screen.Sync()
 			}
-		case *tcell.EventResize:
-			screen.Sync()
 		}
 	}
+}
+
+func handleInput(key *tcell.EventKey, state *game.GameState) {
+	var dir game.Direction
+	switch key.Key() {
+	case tcell.KeyUp:
+		dir = game.Up
+	case tcell.KeyDown:
+		dir = game.Down
+	case tcell.KeyLeft:
+		dir = game.Left
+	case tcell.KeyRight:
+		dir = game.Right
+	case tcell.KeyRune:
+		switch key.Str() {
+		case "w", "W":
+			dir = game.Up
+		case "s", "S":
+			dir = game.Down
+		case "a", "A":
+			dir = game.Left
+		case "d", "D":
+			dir = game.Right
+		default:
+			return
+		}
+	default:
+		return
+	}
+	state.Tank.Direction = dir
+	game.TryMoveTank(state.Map, &state.Tank)
 }
