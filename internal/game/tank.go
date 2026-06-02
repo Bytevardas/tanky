@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
 )
@@ -22,13 +24,21 @@ const (
 )
 
 type Tank struct {
-	Col, Row  int
-	Direction Direction
-	Kind      TankKind
+	Col, Row           int
+	SpawnCol, SpawnRow int
+	Direction          Direction
+	Kind               TankKind
+	LastFire           time.Time
 }
 
-var rowDelta = [4]int{-1, 1, 0, 0}
-var colDelta = [4]int{0, 0, -1, 1}
+func NewPlayer(col, row int, dir Direction) Tank {
+	return Tank{Col: col, Row: row, SpawnCol: col, SpawnRow: row, Direction: dir, Kind: Player}
+}
+
+var (
+	rowDelta = [4]int{-1, 1, 0, 0}
+	colDelta = [4]int{0, 0, -1, 1}
+)
 
 func TryMoveTank(m Map, t *Tank) {
 	newRow := t.Row + rowDelta[t.Direction]
