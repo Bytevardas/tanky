@@ -51,7 +51,7 @@ func main() {
 
 	state := game.GameState{
 		Map:  game.Map1,
-		Tank: game.Tank{Col: 13, Row: 22, Direction: game.Up, Kind: game.Player},
+		Tank: game.NewPlayer(13, 22, game.Up),
 	}
 	game.Render(screen, state)
 
@@ -61,6 +61,7 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
+			game.UpdateBullets(&state)
 			game.Render(screen, state)
 		case ev := <-screen.EventQ():
 			switch ev := ev.(type) {
@@ -78,6 +79,11 @@ func main() {
 }
 
 func handleInput(key *tcell.EventKey, state *game.GameState) {
+	if key.Key() == tcell.KeyRune && key.Str() == " " {
+		game.FireBullet(state)
+		return
+	}
+
 	var dir game.Direction
 	switch key.Key() {
 	case tcell.KeyUp:
