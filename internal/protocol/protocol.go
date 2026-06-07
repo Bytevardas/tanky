@@ -9,6 +9,9 @@ import (
 const (
 	CommandHost byte = 0x01
 	CommandJoin byte = 0x02
+
+	MsgRoomCode byte = 0x10
+	MsgStart    byte = 0x11
 )
 
 func EncodeCommand(t byte, payload []byte) []byte {

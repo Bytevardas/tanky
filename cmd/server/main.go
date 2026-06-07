@@ -60,7 +60,7 @@ func handleConnection(conn net.Conn) {
 		mu.Lock()
 		roomsMap[room] = make(chan net.Conn)
 		mu.Unlock()
-		protocol.WriteMessage(conn, []byte(room))
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgRoomCode, []byte(room)))
 
 		joinerConn := <-roomsMap[room]
 		defer conn.Close()
@@ -69,6 +69,9 @@ func handleConnection(conn net.Conn) {
 		mu.Lock()
 		delete(roomsMap, room)
 		mu.Unlock()
+
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgStart, nil))
+		protocol.WriteMessage(joinerConn, protocol.EncodeCommand(protocol.MsgStart, nil))
 
 		done := make(chan struct{})
 
