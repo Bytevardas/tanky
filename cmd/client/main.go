@@ -55,6 +55,18 @@ func main() {
 	}
 	game.Render(screen, state)
 
+	netMessages := make(chan []byte)
+	go func() {
+		for {
+			msg, err := protocol.ReadMessage(conn)
+			if err != nil {
+				close(netMessages)
+				return
+			}
+			netMessages <- msg
+		}
+	}()
+
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -62,6 +74,22 @@ func main() {
 		select {
 		case <-ticker.C:
 			game.UpdateBullets(&state)
+			game.Render(screen, state)
+		case msg, ok := <-netMessages:
+			if !ok {
+				netMessages = nil
+				break
+			}
+			if len(msg) == 0 {
+				break
+			}
+			switch msg[0] {
+			case protocol.MsgRoomCode:
+				state.RoomCode = string(msg[1:])
+			case protocol.MsgStart:
+				enemy := game.NewEnemy(12, 3, game.Down)
+				state.Enemy = &enemy
+			}
 			game.Render(screen, state)
 		case ev := <-screen.EventQ():
 			switch ev := ev.(type) {
