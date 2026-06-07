@@ -35,6 +35,10 @@ func NewPlayer(col, row int, dir Direction) Tank {
 	return Tank{Col: col, Row: row, SpawnCol: col, SpawnRow: row, Direction: dir, Kind: Player}
 }
 
+func NewEnemy(col, row int, dir Direction) Tank {
+	return Tank{Col: col, Row: row, SpawnCol: col, SpawnRow: row, Direction: dir, Kind: Enemy}
+}
+
 var (
 	rowDelta = [4]int{-1, 1, 0, 0}
 	colDelta = [4]int{0, 0, -1, 1}
