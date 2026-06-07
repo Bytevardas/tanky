@@ -63,7 +63,7 @@ func bulletHit(state *GameState, b Bullet) bool {
 		return true
 	}
 	tile := state.Map.Grid[b.Row][b.Col]
-	if tile == Brick {
+	if tile == Brick || tile == Base {
 		state.Map.Grid[b.Row][b.Col] = Empty
 		return true
 	}
