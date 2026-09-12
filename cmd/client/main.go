@@ -177,7 +177,7 @@ func handleInput(key *tcell.EventKey, conn net.Conn, state *game.GameState) {
 		return
 	}
 	state.Tank.Direction = dir
-	game.TryMoveTank(state.Map, &state.Tank)
+	game.TryMoveTank(state)
 	protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgMove, encodePose(state.Tank.Col, state.Tank.Row, dir)))
 }
 
