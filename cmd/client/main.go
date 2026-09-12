@@ -28,14 +28,19 @@ func main() {
 		log.Fatal("expecting command to be passed in: host or join <code>")
 	}
 
+	var state game.GameState
 	switch os.Args[1] {
 	case "host":
 		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
+		state = game.NewGameState(game.Bottom)
 	case "join":
 		if len(os.Args) < 3 {
 			log.Fatal("join command requires room id")
 		}
 		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(os.Args[2])))
+		state = game.NewGameState(game.Top)
+	default:
+		log.Fatal("unknown command: expecting host or join <code>")
 	}
 
 	screen, err := tcell.NewScreen()
@@ -49,10 +54,6 @@ func main() {
 	}
 	defer screen.Fini()
 
-	state := game.GameState{
-		Map:  game.Map1,
-		Tank: game.NewPlayer(13, 22, game.Up),
-	}
 	game.Render(screen, state)
 
 	netMessages := make(chan []byte)
@@ -74,23 +75,12 @@ func main() {
 		select {
 		case <-ticker.C:
 			game.UpdateBullets(&state)
-			game.Render(screen, state)
 		case msg, ok := <-netMessages:
 			if !ok {
 				netMessages = nil
 				break
 			}
-			if len(msg) == 0 {
-				break
-			}
-			switch msg[0] {
-			case protocol.MsgRoomCode:
-				state.RoomCode = string(msg[1:])
-			case protocol.MsgStart:
-				enemy := game.NewEnemy(12, 3, game.Down)
-				state.Enemy = &enemy
-			}
-			game.Render(screen, state)
+			handleMessage(msg, &state)
 		case ev := <-screen.EventQ():
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
@@ -98,11 +88,26 @@ func main() {
 					return
 				}
 				handleInput(ev, &state)
-				game.Render(screen, state)
 			case *tcell.EventResize:
 				screen.Sync()
 			}
 		}
+		if state.LevelOver {
+			game.NextLevel(&state, state.Winner)
+		}
+		game.Render(screen, state)
+	}
+}
+
+func handleMessage(msg []byte, state *game.GameState) {
+	if len(msg) == 0 {
+		return
+	}
+	switch msg[0] {
+	case protocol.MsgRoomCode:
+		state.RoomCode = string(msg[1:])
+	case protocol.MsgStart:
+		game.SpawnEnemy(state)
 	}
 }
 
