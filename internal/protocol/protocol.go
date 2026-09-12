@@ -12,6 +12,10 @@ const (
 
 	MsgRoomCode byte = 0x10
 	MsgStart    byte = 0x11
+
+	MsgMove      byte = 0x20
+	MsgFire      byte = 0x21
+	MsgNextLevel byte = 0x22
 )
 
 func EncodeCommand(t byte, payload []byte) []byte {
