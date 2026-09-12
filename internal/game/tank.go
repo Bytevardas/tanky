@@ -81,6 +81,9 @@ func TryMoveTank(state *GameState) {
 
 	t.Row = newRow
 	t.Col = newCol
+	if AbsorbBullets(state, *t) {
+		respawn(t)
+	}
 }
 
 var tankGlyphs = [4]rune{'^', 'v', '<', '>'}
