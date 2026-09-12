@@ -72,6 +72,7 @@ func main() {
 	defer ticker.Stop()
 
 	for {
+		before := state.Tank
 		select {
 		case <-ticker.C:
 			game.UpdateBullets(&state)
@@ -94,6 +95,10 @@ func main() {
 		}
 		if state.LevelOver {
 			finishLevel(conn, &state)
+		}
+		if poseChanged(before, state.Tank) {
+			t := state.Tank
+			protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgMove, encodePose(t.Col, t.Row, t.Direction)))
 		}
 		game.Render(screen, state)
 	}
@@ -123,12 +128,16 @@ func handleMessage(msg []byte, state *game.GameState) {
 			return
 		}
 		state.Enemy.Col, state.Enemy.Row, state.Enemy.Direction = col, row, dir
+		game.AbsorbBullets(state, *state.Enemy)
 	case protocol.MsgFire:
+		if state.Enemy == nil {
+			return
+		}
 		col, row, dir, ok := decodePose(msg[1:])
 		if !ok {
 			return
 		}
-		game.FireFrom(state, col, row, dir)
+		game.FireFrom(state, game.Tank{Col: col, Row: row, Direction: dir, Side: state.Enemy.Side})
 	case protocol.MsgNextLevel:
 		if len(msg) < 3 || msg[2] > byte(game.Top) {
 			return
@@ -178,7 +187,10 @@ func handleInput(key *tcell.EventKey, conn net.Conn, state *game.GameState) {
 	}
 	state.Tank.Direction = dir
 	game.TryMoveTank(state)
-	protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgMove, encodePose(state.Tank.Col, state.Tank.Row, dir)))
+}
+
+func poseChanged(before, after game.Tank) bool {
+	return before.Col != after.Col || before.Row != after.Row || before.Direction != after.Direction
 }
 
 func encodePose(col, row int, dir game.Direction) []byte {
