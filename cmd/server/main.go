@@ -73,26 +73,22 @@ func handleConnection(conn net.Conn) {
 		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgStart, nil))
 		protocol.WriteMessage(joinerConn, protocol.EncodeCommand(protocol.MsgStart, nil))
 
-		done := make(chan struct{})
-
-		go func() {
-			io.Copy(conn, joinerConn)
-			close(done)
-		}()
-		io.Copy(joinerConn, conn)
-
-		<-done
+		remaining := make(chan net.Conn, 2)
+		go relay(conn, joinerConn, remaining)
+		go relay(joinerConn, conn, remaining)
+		protocol.WriteMessage(<-remaining, protocol.EncodeCommand(protocol.MsgPeerLeft, nil))
 
 	case protocol.CommandJoin:
 		if len(b) < 2 {
-			protocol.WriteMessage(conn, []byte("missing code"))
+			protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgError, []byte("missing code")))
+			conn.Close()
 			return
 		}
 		mu.Lock()
 		ch, ok := roomsMap[string(b[1:])]
 		mu.Unlock()
 		if !ok {
-			protocol.WriteMessage(conn, []byte("Room does not exist"))
+			protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgError, []byte("Room does not exist")))
 			conn.Close()
 			return
 		}
@@ -100,9 +96,15 @@ func handleConnection(conn net.Conn) {
 		ch <- conn
 
 	default:
-		protocol.WriteMessage(conn, []byte("unknown command"))
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgError, []byte("unknown command")))
+		conn.Close()
 		return
 	}
+}
+
+func relay(dst, src net.Conn, remaining chan<- net.Conn) {
+	io.Copy(dst, src)
+	remaining <- dst
 }
 
 const chars = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
