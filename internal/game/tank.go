@@ -64,14 +64,18 @@ var (
 	colDelta = [4]int{0, 0, -1, 1}
 )
 
-func TryMoveTank(m Map, t *Tank) {
+func TryMoveTank(state *GameState) {
+	t := &state.Tank
 	newRow := t.Row + rowDelta[t.Direction]
 	newCol := t.Col + colDelta[t.Direction]
 
 	if newRow < 0 || newRow >= MapSize || newCol < 0 || newCol >= MapSize {
 		return
 	}
-	if !tilePassable(m.Grid[newRow][newCol]) {
+	if !tilePassable(state.Map.Grid[newRow][newCol]) {
+		return
+	}
+	if state.Enemy != nil && state.Enemy.Row == newRow && state.Enemy.Col == newCol {
 		return
 	}
 
