@@ -43,6 +43,13 @@ func main() {
 		log.Fatal("unknown command: expecting host or join <code>")
 	}
 
+	reason := play(conn, state)
+	if reason != "" {
+		fmt.Println(reason)
+	}
+}
+
+func play(conn net.Conn, state game.GameState) string {
 	screen, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatal("failed to create new screen")
@@ -78,15 +85,16 @@ func main() {
 			game.UpdateBullets(&state)
 		case msg, ok := <-netMessages:
 			if !ok {
-				netMessages = nil
-				break
+				return "Connection lost"
 			}
-			handleMessage(msg, &state)
+			if reason := handleMessage(msg, &state); reason != "" {
+				return reason
+			}
 		case ev := <-screen.EventQ():
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				if ev.Key() == tcell.KeyEscape {
-					return
+					return ""
 				}
 				handleInput(ev, conn, &state)
 			case *tcell.EventResize:
@@ -110,43 +118,48 @@ func finishLevel(conn net.Conn, state *game.GameState) {
 	protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgNextLevel, []byte{byte(state.Level), byte(winner)}))
 }
 
-func handleMessage(msg []byte, state *game.GameState) {
+func handleMessage(msg []byte, state *game.GameState) string {
 	if len(msg) == 0 {
-		return
+		return ""
 	}
 	switch msg[0] {
+	case protocol.MsgError:
+		return string(msg[1:])
+	case protocol.MsgPeerLeft:
+		return "Opponent left"
 	case protocol.MsgRoomCode:
 		state.RoomCode = string(msg[1:])
 	case protocol.MsgStart:
 		game.SpawnEnemy(state)
 	case protocol.MsgMove:
 		if state.Enemy == nil {
-			return
+			return ""
 		}
 		col, row, dir, ok := decodePose(msg[1:])
 		if !ok {
-			return
+			return ""
 		}
 		state.Enemy.Col, state.Enemy.Row, state.Enemy.Direction = col, row, dir
 		game.AbsorbBullets(state, *state.Enemy)
 	case protocol.MsgFire:
 		if state.Enemy == nil {
-			return
+			return ""
 		}
 		col, row, dir, ok := decodePose(msg[1:])
 		if !ok {
-			return
+			return ""
 		}
 		game.FireFrom(state, game.Tank{Col: col, Row: row, Direction: dir, Side: state.Enemy.Side})
 	case protocol.MsgNextLevel:
 		if len(msg) < 3 || msg[2] > byte(game.Top) {
-			return
+			return ""
 		}
 		if int(msg[1]) <= state.Level {
-			return
+			return ""
 		}
 		game.NextLevel(state, game.Side(msg[2]))
 	}
+	return ""
 }
 
 func handleInput(key *tcell.EventKey, conn net.Conn, state *game.GameState) {
