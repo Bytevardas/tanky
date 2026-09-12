@@ -14,6 +14,13 @@ func MapOffset(screen tcell.Screen) (int, int) {
 	return (w - MapSize*2) / 2, (h - MapSize) / 2
 }
 
+func baseSide(row int) Side {
+	if row < MapSize/2 {
+		return Top
+	}
+	return Bottom
+}
+
 func RenderMap(screen tcell.Screen, m Map) {
 	ox, oy := MapOffset(screen)
 	for row := range m.Grid {
@@ -88,3 +95,5 @@ var Map2 = Map{
 		{Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty},
 	},
 }
+
+var Levels = []Map{Map1, Map2}

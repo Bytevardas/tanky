@@ -25,17 +25,22 @@ func RenderBullet(screen tcell.Screen, b Bullet) {
 	screen.SetContent(ox+b.Col*2+1, oy+b.Row, g, nil, style)
 }
 
-func FireBullet(state *GameState) {
+func FireBullet(state *GameState) bool {
 	if time.Since(state.Tank.LastFire) < fireCooldown {
-		return
+		return false
 	}
 	state.Tank.LastFire = time.Now()
 
 	t := state.Tank
+	FireFrom(state, t.Col, t.Row, t.Direction)
+	return true
+}
+
+func FireFrom(state *GameState, col, row int, dir Direction) {
 	b := Bullet{
-		Col:       t.Col + colDelta[t.Direction],
-		Row:       t.Row + rowDelta[t.Direction],
-		Direction: t.Direction,
+		Col:       col + colDelta[dir],
+		Row:       row + rowDelta[dir],
+		Direction: dir,
 	}
 	if bulletHit(state, b) {
 		return
@@ -62,12 +67,15 @@ func bulletHit(state *GameState, b Bullet) bool {
 	if b.Row < 0 || b.Row >= MapSize || b.Col < 0 || b.Col >= MapSize {
 		return true
 	}
-	tile := state.Map.Grid[b.Row][b.Col]
-	if tile == Brick || tile == Base {
+	switch state.Map.Grid[b.Row][b.Col] {
+	case Brick:
 		state.Map.Grid[b.Row][b.Col] = Empty
 		return true
-	}
-	if tile == Steel {
+	case Base:
+		state.LevelOver = true
+		state.Winner = baseSide(b.Row).opposite()
+		return true
+	case Steel:
 		return true
 	}
 	return false

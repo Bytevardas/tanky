@@ -28,14 +28,19 @@ func main() {
 		log.Fatal("expecting command to be passed in: host or join <code>")
 	}
 
+	var state game.GameState
 	switch os.Args[1] {
 	case "host":
 		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
+		state = game.NewGameState(game.Bottom)
 	case "join":
 		if len(os.Args) < 3 {
 			log.Fatal("join command requires room id")
 		}
 		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(os.Args[2])))
+		state = game.NewGameState(game.Top)
+	default:
+		log.Fatal("unknown command: expecting host or join <code>")
 	}
 
 	screen, err := tcell.NewScreen()
@@ -49,10 +54,6 @@ func main() {
 	}
 	defer screen.Fini()
 
-	state := game.GameState{
-		Map:  game.Map1,
-		Tank: game.NewPlayer(13, 22, game.Up),
-	}
 	game.Render(screen, state)
 
 	netMessages := make(chan []byte)
@@ -74,41 +75,78 @@ func main() {
 		select {
 		case <-ticker.C:
 			game.UpdateBullets(&state)
-			game.Render(screen, state)
 		case msg, ok := <-netMessages:
 			if !ok {
 				netMessages = nil
 				break
 			}
-			if len(msg) == 0 {
-				break
-			}
-			switch msg[0] {
-			case protocol.MsgRoomCode:
-				state.RoomCode = string(msg[1:])
-			case protocol.MsgStart:
-				enemy := game.NewEnemy(12, 3, game.Down)
-				state.Enemy = &enemy
-			}
-			game.Render(screen, state)
+			handleMessage(msg, &state)
 		case ev := <-screen.EventQ():
 			switch ev := ev.(type) {
 			case *tcell.EventKey:
 				if ev.Key() == tcell.KeyEscape {
 					return
 				}
-				handleInput(ev, &state)
-				game.Render(screen, state)
+				handleInput(ev, conn, &state)
 			case *tcell.EventResize:
 				screen.Sync()
 			}
 		}
+		if state.LevelOver {
+			finishLevel(conn, &state)
+		}
+		game.Render(screen, state)
 	}
 }
 
-func handleInput(key *tcell.EventKey, state *game.GameState) {
+func finishLevel(conn net.Conn, state *game.GameState) {
+	winner := state.Winner
+	game.NextLevel(state, winner)
+	protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgNextLevel, []byte{byte(state.Level), byte(winner)}))
+}
+
+func handleMessage(msg []byte, state *game.GameState) {
+	if len(msg) == 0 {
+		return
+	}
+	switch msg[0] {
+	case protocol.MsgRoomCode:
+		state.RoomCode = string(msg[1:])
+	case protocol.MsgStart:
+		game.SpawnEnemy(state)
+	case protocol.MsgMove:
+		if state.Enemy == nil {
+			return
+		}
+		col, row, dir, ok := decodePose(msg[1:])
+		if !ok {
+			return
+		}
+		state.Enemy.Col, state.Enemy.Row, state.Enemy.Direction = col, row, dir
+	case protocol.MsgFire:
+		col, row, dir, ok := decodePose(msg[1:])
+		if !ok {
+			return
+		}
+		game.FireFrom(state, col, row, dir)
+	case protocol.MsgNextLevel:
+		if len(msg) < 3 || msg[2] > byte(game.Top) {
+			return
+		}
+		if int(msg[1]) <= state.Level {
+			return
+		}
+		game.NextLevel(state, game.Side(msg[2]))
+	}
+}
+
+func handleInput(key *tcell.EventKey, conn net.Conn, state *game.GameState) {
 	if key.Key() == tcell.KeyRune && key.Str() == " " {
-		game.FireBullet(state)
+		if !game.FireBullet(state) {
+			return
+		}
+		t := state.Tank
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgFire, encodePose(t.Col, t.Row, t.Direction)))
 		return
 	}
 
@@ -140,4 +178,20 @@ func handleInput(key *tcell.EventKey, state *game.GameState) {
 	}
 	state.Tank.Direction = dir
 	game.TryMoveTank(state.Map, &state.Tank)
+	protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.MsgMove, encodePose(state.Tank.Col, state.Tank.Row, dir)))
+}
+
+func encodePose(col, row int, dir game.Direction) []byte {
+	return []byte{byte(col), byte(row), byte(dir)}
+}
+
+func decodePose(b []byte) (col, row int, dir game.Direction, ok bool) {
+	if len(b) < 3 {
+		return 0, 0, 0, false
+	}
+	col, row, dir = int(b[0]), int(b[1]), game.Direction(b[2])
+	if col >= game.MapSize || row >= game.MapSize || dir > game.Right {
+		return 0, 0, 0, false
+	}
+	return col, row, dir, true
 }

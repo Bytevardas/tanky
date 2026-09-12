@@ -23,20 +23,40 @@ const (
 	Enemy
 )
 
+type Side uint8
+
+const (
+	Bottom Side = iota
+	Top
+)
+
+func (s Side) opposite() Side {
+	return s ^ 1
+}
+
 type Tank struct {
-	Col, Row           int
-	SpawnCol, SpawnRow int
-	Direction          Direction
-	Kind               TankKind
-	LastFire           time.Time
+	Col, Row  int
+	Direction Direction
+	Side      Side
+	Kind      TankKind
+	LastFire  time.Time
 }
 
-func NewPlayer(col, row int, dir Direction) Tank {
-	return Tank{Col: col, Row: row, SpawnCol: col, SpawnRow: row, Direction: dir, Kind: Player}
+var spawns = [2]Tank{
+	Bottom: {Col: 13, Row: 22, Direction: Up},
+	Top:    {Col: 12, Row: 3, Direction: Down},
 }
 
-func NewEnemy(col, row int, dir Direction) Tank {
-	return Tank{Col: col, Row: row, SpawnCol: col, SpawnRow: row, Direction: dir, Kind: Enemy}
+func NewTank(side Side, kind TankKind) Tank {
+	t := spawns[side]
+	t.Side = side
+	t.Kind = kind
+	return t
+}
+
+func respawn(t *Tank) {
+	spawn := spawns[t.Side]
+	t.Col, t.Row, t.Direction = spawn.Col, spawn.Row, spawn.Direction
 }
 
 var (
