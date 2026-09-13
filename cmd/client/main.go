@@ -172,34 +172,37 @@ func handleInput(key *tcell.EventKey, conn net.Conn, state *game.GameState) {
 		return
 	}
 
-	var dir game.Direction
-	switch key.Key() {
-	case tcell.KeyUp:
-		dir = game.Up
-	case tcell.KeyDown:
-		dir = game.Down
-	case tcell.KeyLeft:
-		dir = game.Left
-	case tcell.KeyRight:
-		dir = game.Right
-	case tcell.KeyRune:
-		switch key.Str() {
-		case "w", "W":
-			dir = game.Up
-		case "s", "S":
-			dir = game.Down
-		case "a", "A":
-			dir = game.Left
-		case "d", "D":
-			dir = game.Right
-		default:
-			return
-		}
-	default:
+	dir, ok := keyDirection(key)
+	if !ok {
 		return
 	}
 	state.Tank.Direction = dir
 	game.TryMoveTank(state)
+}
+
+func keyDirection(key *tcell.EventKey) (game.Direction, bool) {
+	switch key.Key() {
+	case tcell.KeyUp:
+		return game.Up, true
+	case tcell.KeyDown:
+		return game.Down, true
+	case tcell.KeyLeft:
+		return game.Left, true
+	case tcell.KeyRight:
+		return game.Right, true
+	case tcell.KeyRune:
+		switch key.Str() {
+		case "w", "W":
+			return game.Up, true
+		case "s", "S":
+			return game.Down, true
+		case "a", "A":
+			return game.Left, true
+		case "d", "D":
+			return game.Right, true
+		}
+	}
+	return 0, false
 }
 
 func poseChanged(before, after game.Tank) bool {
