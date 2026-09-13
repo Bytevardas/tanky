@@ -13,54 +13,58 @@ import (
 	"github.com/gdamore/tcell/v3"
 )
 
-var availableCommands = []string{"host", "join", "help"}
-
 func main() {
-	fmt.Println("staring client")
-
-	conn, err := net.Dial("tcp", "0.0.0.0:8080")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	if len(os.Args) < 2 {
-		log.Fatal("expecting command to be passed in: host or join <code>")
-	}
-
-	var state game.GameState
-	switch os.Args[1] {
-	case "host":
-		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
-		state = game.NewGameState(game.Bottom)
-	case "join":
-		if len(os.Args) < 3 {
-			log.Fatal("join command requires room id")
-		}
-		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(os.Args[2])))
-		state = game.NewGameState(game.Top)
-	default:
-		log.Fatal("unknown command: expecting host or join <code>")
-	}
-
-	reason := play(conn, state)
+	reason := run(os.Args[1:])
 	if reason != "" {
 		fmt.Println(reason)
 	}
 }
 
-func play(conn net.Conn, state game.GameState) string {
+func run(args []string) string {
 	screen, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatal("failed to create new screen")
 	}
-
-	err = screen.Init()
-	if err != nil {
+	if err := screen.Init(); err != nil {
 		log.Fatal("failed to create new screen")
 	}
 	defer screen.Fini()
 
+	var option menuOption
+	var code string
+	switch {
+	case len(args) == 0:
+		option, code = runMenu(screen)
+	case args[0] == "host":
+		option = optionHost
+	case args[0] == "join" && len(args) > 1:
+		option, code = optionJoin, args[1]
+	default:
+		return "usage: client [host | join <code>]"
+	}
+	if option == optionExit {
+		return ""
+	}
+
+	conn, err := net.Dial("tcp", "0.0.0.0:8080")
+	if err != nil {
+		return "Could not reach server: " + err.Error()
+	}
+	defer conn.Close()
+
+	var state game.GameState
+	switch option {
+	case optionHost:
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
+		state = game.NewGameState(game.Bottom)
+	case optionJoin:
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(code)))
+		state = game.NewGameState(game.Top)
+	}
+	return play(screen, conn, state)
+}
+
+func play(screen tcell.Screen, conn net.Conn, state game.GameState) string {
 	game.Render(screen, state)
 
 	netMessages := make(chan []byte)
