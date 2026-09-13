@@ -2,11 +2,13 @@ package main
 
 import (
 	"crypto/rand"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"math/big"
 	"net"
+	"strconv"
 	"sync"
 
 	"tanky/internal/protocol"
@@ -18,23 +20,51 @@ var (
 )
 
 func main() {
-	fmt.Println("starting to listen to 8080")
-	listener, err := net.Listen("tcp", ":8080")
+	addr := flag.String("addr", ":8080", "address to listen on")
+	flag.Parse()
+
+	listener, err := net.Listen("tcp", *addr)
 	if err != nil {
-		log.Fatal("failed to list to the port")
+		log.Fatal(err)
 	}
 	defer listener.Close()
 
-	fmt.Println("waiting for connections")
+	fmt.Println("listening on", listener.Addr())
+	for _, a := range reachableAddresses(listener.Addr()) {
+		fmt.Println("clients on this network can connect with -server", a)
+	}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("failed accept connection")
-			conn.Close()
 			continue
 		}
 		go handleConnection(conn)
 	}
+}
+
+func reachableAddresses(listen net.Addr) []string {
+	tcpAddr, ok := listen.(*net.TCPAddr)
+	if !ok {
+		return nil
+	}
+	if !tcpAddr.IP.IsUnspecified() {
+		return []string{tcpAddr.String()}
+	}
+	interfaceAddrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil
+	}
+	port := strconv.Itoa(tcpAddr.Port)
+	var addrs []string
+	for _, a := range interfaceAddrs {
+		ipNet, ok := a.(*net.IPNet)
+		if !ok || ipNet.IP.IsLoopback() || ipNet.IP.To4() == nil {
+			continue
+		}
+		addrs = append(addrs, net.JoinHostPort(ipNet.IP.String(), port))
+	}
+	return addrs
 }
 
 func handleConnection(conn net.Conn) {
