@@ -7,6 +7,11 @@ import (
 )
 
 const (
+	RoomCodeLength = 6
+	RoomCodeChars  = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+)
+
+const (
 	CommandHost byte = 0x01
 	CommandJoin byte = 0x02
 

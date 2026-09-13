@@ -107,18 +107,16 @@ func relay(dst, src net.Conn, remaining chan<- net.Conn) {
 	remaining <- dst
 }
 
-const chars = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
-
 func generateRoomId() (string, error) {
-	b := make([]byte, 6)
-	charLength := big.NewInt(int64(len(chars)))
+	b := make([]byte, protocol.RoomCodeLength)
+	charLength := big.NewInt(int64(len(protocol.RoomCodeChars)))
 
 	for i := range b {
 		index, err := rand.Int(rand.Reader, charLength)
 		if err != nil {
 			return "", err
 		}
-		b[i] = chars[index.Int64()]
+		b[i] = protocol.RoomCodeChars[index.Int64()]
 	}
 
 	return string(b), nil

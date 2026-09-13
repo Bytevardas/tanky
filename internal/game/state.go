@@ -58,16 +58,16 @@ func renderHUD(screen tcell.Screen, state GameState) {
 	ox, oy := MapOffset(screen)
 	style := tcell.StyleDefault.Foreground(color.White)
 	if state.RoomCode != "" {
-		renderText(screen, ox, max(oy-2, 0), "Room: "+state.RoomCode, style)
+		RenderText(screen, ox, max(oy-2, 0), "Room: "+state.RoomCode, style)
 	}
 	you := state.Score[state.Tank.Side]
 	enemy := state.Score[state.Tank.Side.opposite()]
 	level := fmt.Sprintf("Level %d: %s   You %d - %d Enemy", state.Level+1, state.Map.Name, you, enemy)
-	renderText(screen, ox, max(oy-1, 0), level, style)
+	RenderText(screen, ox, max(oy-1, 0), level, style)
 }
 
-func renderText(screen tcell.Screen, x, y int, s string, style tcell.Style) {
-	for i, r := range s {
+func RenderText(screen tcell.Screen, x, y int, s string, style tcell.Style) {
+	for i, r := range []rune(s) {
 		screen.SetContent(x+i, y, r, nil, style)
 	}
 }

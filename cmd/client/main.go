@@ -13,54 +13,58 @@ import (
 	"github.com/gdamore/tcell/v3"
 )
 
-var availableCommands = []string{"host", "join", "help"}
-
 func main() {
-	fmt.Println("staring client")
-
-	conn, err := net.Dial("tcp", "0.0.0.0:8080")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-
-	if len(os.Args) < 2 {
-		log.Fatal("expecting command to be passed in: host or join <code>")
-	}
-
-	var state game.GameState
-	switch os.Args[1] {
-	case "host":
-		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
-		state = game.NewGameState(game.Bottom)
-	case "join":
-		if len(os.Args) < 3 {
-			log.Fatal("join command requires room id")
-		}
-		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(os.Args[2])))
-		state = game.NewGameState(game.Top)
-	default:
-		log.Fatal("unknown command: expecting host or join <code>")
-	}
-
-	reason := play(conn, state)
+	reason := run(os.Args[1:])
 	if reason != "" {
 		fmt.Println(reason)
 	}
 }
 
-func play(conn net.Conn, state game.GameState) string {
+func run(args []string) string {
 	screen, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatal("failed to create new screen")
 	}
-
-	err = screen.Init()
-	if err != nil {
+	if err := screen.Init(); err != nil {
 		log.Fatal("failed to create new screen")
 	}
 	defer screen.Fini()
 
+	var option menuOption
+	var code string
+	switch {
+	case len(args) == 0:
+		option, code = runMenu(screen)
+	case args[0] == "host":
+		option = optionHost
+	case args[0] == "join" && len(args) > 1:
+		option, code = optionJoin, args[1]
+	default:
+		return "usage: client [host | join <code>]"
+	}
+	if option == optionExit {
+		return ""
+	}
+
+	conn, err := net.Dial("tcp", "0.0.0.0:8080")
+	if err != nil {
+		return "Could not reach server: " + err.Error()
+	}
+	defer conn.Close()
+
+	var state game.GameState
+	switch option {
+	case optionHost:
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandHost, nil))
+		state = game.NewGameState(game.Bottom)
+	case optionJoin:
+		protocol.WriteMessage(conn, protocol.EncodeCommand(protocol.CommandJoin, []byte(code)))
+		state = game.NewGameState(game.Top)
+	}
+	return play(screen, conn, state)
+}
+
+func play(screen tcell.Screen, conn net.Conn, state game.GameState) string {
 	game.Render(screen, state)
 
 	netMessages := make(chan []byte)
@@ -172,34 +176,37 @@ func handleInput(key *tcell.EventKey, conn net.Conn, state *game.GameState) {
 		return
 	}
 
-	var dir game.Direction
-	switch key.Key() {
-	case tcell.KeyUp:
-		dir = game.Up
-	case tcell.KeyDown:
-		dir = game.Down
-	case tcell.KeyLeft:
-		dir = game.Left
-	case tcell.KeyRight:
-		dir = game.Right
-	case tcell.KeyRune:
-		switch key.Str() {
-		case "w", "W":
-			dir = game.Up
-		case "s", "S":
-			dir = game.Down
-		case "a", "A":
-			dir = game.Left
-		case "d", "D":
-			dir = game.Right
-		default:
-			return
-		}
-	default:
+	dir, ok := keyDirection(key)
+	if !ok {
 		return
 	}
 	state.Tank.Direction = dir
 	game.TryMoveTank(state)
+}
+
+func keyDirection(key *tcell.EventKey) (game.Direction, bool) {
+	switch key.Key() {
+	case tcell.KeyUp:
+		return game.Up, true
+	case tcell.KeyDown:
+		return game.Down, true
+	case tcell.KeyLeft:
+		return game.Left, true
+	case tcell.KeyRight:
+		return game.Right, true
+	case tcell.KeyRune:
+		switch key.Str() {
+		case "w", "W":
+			return game.Up, true
+		case "s", "S":
+			return game.Down, true
+		case "a", "A":
+			return game.Left, true
+		case "d", "D":
+			return game.Right, true
+		}
+	}
+	return 0, false
 }
 
 func poseChanged(before, after game.Tank) bool {
