@@ -30,7 +30,6 @@ func main() {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("failed accept connection")
-			conn.Close()
 			continue
 		}
 		go handleConnection(conn)
