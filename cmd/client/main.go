@@ -1,10 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"tanky/internal/game"
@@ -14,13 +14,15 @@ import (
 )
 
 func main() {
-	reason := run(os.Args[1:])
+	server := flag.String("server", "localhost:8080", "address of the tanky server")
+	flag.Parse()
+	reason := run(*server, flag.Args())
 	if reason != "" {
 		fmt.Println(reason)
 	}
 }
 
-func run(args []string) string {
+func run(server string, args []string) string {
 	screen, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatal("failed to create new screen")
@@ -40,13 +42,13 @@ func run(args []string) string {
 	case args[0] == "join" && len(args) > 1:
 		option, code = optionJoin, args[1]
 	default:
-		return "usage: client [host | join <code>]"
+		return "usage: client [-server host:port] [host | join <code>]"
 	}
 	if option == optionExit {
 		return ""
 	}
 
-	conn, err := net.Dial("tcp", "0.0.0.0:8080")
+	conn, err := net.Dial("tcp", server)
 	if err != nil {
 		return "Could not reach server: " + err.Error()
 	}
