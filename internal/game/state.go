@@ -67,7 +67,7 @@ func renderHUD(screen tcell.Screen, state GameState) {
 }
 
 func renderText(screen tcell.Screen, x, y int, s string, style tcell.Style) {
-	for i, r := range s {
+	for i, r := range []rune(s) {
 		screen.SetContent(x+i, y, r, nil, style)
 	}
 }
