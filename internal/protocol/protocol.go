@@ -12,6 +12,8 @@ const (
 
 	MsgRoomCode byte = 0x10
 	MsgStart    byte = 0x11
+	MsgError    byte = 0x12
+	MsgPeerLeft byte = 0x13
 
 	MsgMove      byte = 0x20
 	MsgFire      byte = 0x21
